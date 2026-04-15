@@ -98,17 +98,30 @@ if __name__ == "__main__":
 
     model.eval()
     y_val_pred = model(x_val)
+    y_val_pred_np = y_val_pred.detach().numpy().ravel()
+    y_val_true_np = y_val.numpy().ravel()
+    mse = np.mean((y_val_true_np - y_val_pred_np) ** 2)
+    rmse = np.sqrt(mse)
+    mape = np.mean(np.abs(y_val_true_np - y_val_pred_np) / np.abs(y_val_true_np))
+    r2 = 1 - np.sum((y_val_true_np - y_val_pred_np) ** 2) / np.sum((y_val_true_np - np.mean(y_val_true_np)) ** 2)
+    dt_title = f"DTNet Validation MSE: {mse:.4f}, RMSE: {rmse:.4f}, MAPE: {mape:.4f}, R2: {r2:.4f}"
+
     xgb_model = xgb.XGBRegressor()
     xgb_model.fit(x_train.numpy(), y_train.numpy().ravel())
     xgb_val_pred = xgb_model.predict(x_val.numpy())
+    mse = np.mean((y_val_true_np - xgb_val_pred) ** 2)
+    rmse = np.sqrt(mse)
+    mape = np.mean(np.abs(y_val_true_np - xgb_val_pred) / np.abs(y_val_true_np))
+    r2 = 1 - np.sum((y_val_true_np - xgb_val_pred) ** 2) / np.sum((y_val_true_np - np.mean(y_val_true_np)) ** 2)
+    xgb_title = f"XGBoost Validation MSE: {mse:.4f}, RMSE: {rmse:.4f}, MAPE: {mape:.4f}, R2: {r2:.4f}"
 
-    fig, ax = plt.subplots(1, 1, figsize=(10, 5))
+    fig, ax = plt.subplots(1, 1, figsize=(10, 8))
     ax.scatter(y_val.numpy(), y_val_pred.detach().numpy(), label='DTNet Predictions', alpha=0.5)
     ax.scatter(y_val.numpy(), xgb_val_pred, label='XGBoost Predictions', alpha=0.5)
     ax.plot([y_val.min(), y_val.max()], [y_val.min(), y_val.max()], 'k--', label='Ideal Predictions')
     ax.set_xlabel('True Values')
     ax.set_ylabel('Predicted Values')
-    ax.set_title('DTNet vs XGBoost Predictions')
+    ax.set_title(f'DTNet vs XGBoost Predictions\n{dt_title}\n{xgb_title}')
     ax.legend()
     
     output_dir = BASE_DIR / 'data' / 'figures' / 'dtsem_xgb_compare_dummy_true_vs_pred.png'
