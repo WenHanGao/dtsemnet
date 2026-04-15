@@ -13,7 +13,8 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 if str(BASE_DIR) not in sys.path:
     sys.path.append(str(BASE_DIR))
     
-from src.dtsemnet_custom import DTSemNet
+# from src.dtsemnet_custom import DTSemNet
+from src.dtsemnet import DTSemNet
 import torch
 import torch.nn as nn
 import numpy as np
@@ -80,21 +81,33 @@ if __name__ == "__main__":
     x_val = x[tr_samples:]
     y_val = y[tr_samples:]
     n_epochs = 5000
+    
+    train_dataset = torch.utils.data.TensorDataset(x_train, y_train)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=64, shuffle=True)
+    val_dataset = torch.utils.data.TensorDataset(x_val, y_val)
+    val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=64, shuffle=False)
     for epoch in range(n_epochs):
-        model.train()
-        optimizer.zero_grad()
-        outputs = model(x_train)
-        loss = criterion(outputs, y_train)
-        loss.backward()
-        optimizer.step()
+        total_loss = 0.0
+        for x_batch, y_batch in train_loader:
+            model.train()
+            optimizer.zero_grad()
+            outputs = model(x_batch)
+            loss = criterion(outputs, y_batch)
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item() * x_batch.size(0)
 
-        model.eval()
-        with torch.no_grad():
-            val_outputs = model(x_val)
-            val_loss = criterion(val_outputs, y_val)        
-
+        total_loss /= len(train_loader)
+        total_val_loss = 0.0
+        for x_batch, y_batch in val_loader:
+            model.eval()
+            with torch.no_grad():
+                val_outputs = model(x_batch)
+                val_loss = criterion(val_outputs, y_batch)
+                total_val_loss += val_loss.item() * x_batch.size(0)
+        total_val_loss /= len(val_loader)
         if (epoch + 1) % 100 == 0:
-            print(f"Epoch [{epoch + 1}/{n_epochs}], Loss: {loss.item():.4f}, Val Loss: {val_loss.item():.4f}")
+            print(f"Epoch [{epoch + 1}/{n_epochs}], Loss: {total_loss:.4f}, Val Loss: {total_val_loss:.4f}")
 
     model.eval()
     y_val_pred = model(x_val)
